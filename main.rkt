@@ -71,13 +71,13 @@
     [(? number?) (num s-expr)]
     [(? boolean?) (bool s-expr)]
     [(? string?) (str s-expr)]
-    [(? symbol?) (id s-expr)]    
+    [(? symbol?) (id s-expr)]
     [(list 'if c t f) (ifc (parse c) (parse t) (parse f))]
     [(list 'fun xs b) (fun xs (parse b))]
     [(list 'with (list (list x e) ...) b)
      (app (fun x (parse b)) (map parse e))]
     [(list 'local defs body)
-     (lcal (map parse-def defs) (parse body))] 
+     (lcal (map parse-def defs) (parse body))]
     [(list 'match val-expr cases ...) ; note the elipsis to match n elements
      (mtch (parse val-expr) (map parse-case cases))] ; cases is a list
     [(list f args ...) ; same here
@@ -203,7 +203,10 @@
 
 ;; run :: s-expr -> number/boolean/procedura/struct
 (define(run prog)
-  (interp (parse prog) empty-env))
+  (let ([result (interp (parse prog) empty-env)])
+    (if (Struct? result)
+        (pretty-printing result)
+        result)))
 
 
 #|-----------------------------
@@ -257,3 +260,17 @@ update-env! :: Sym Val Env -> Void
     (not     ,(lambda args (apply not args)))
     (and     ,(lambda args (apply (lambda (x y) (and x y)) args)))
     (or      ,(lambda args (apply (lambda (x y) (or x y)) args)))))
+
+;;--------------------------------
+
+; pretty-printing :: Struct -> string
+; retorna una estructura en forma de string legible
+(define (pretty-printing s)
+  (define (pretty-printing-2 s)
+    (match s
+      [(bool b) (string-append " " (format "~a" b))]
+      [(num n) (string-append " " (number->string n))]
+      [(structV name variant values) (string-append " {"(symbol->string variant) (pretty-printing-2 values)"}")]
+      [(cons h t) (string-append (pretty-printing-2 h) (pretty-printing-2 t))]
+      [_ ""]))
+  (substring (pretty-printing-2 s) 1))

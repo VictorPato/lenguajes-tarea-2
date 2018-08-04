@@ -67,7 +67,12 @@
                                         {match n
                                           {case {Zero} => {Zero}}
                                           {case {Succ m} => m}}}}}
-                {Succ? {pred {Succ {Succ {Zero}}}}}}) #t))
+                {Succ? {pred {Succ {Succ {Zero}}}}}}) #t)
+  ;; pretty-printing
+  (test (pretty-printing(structV 'Nat 'Succ (list (structV 'Nat 'Zero empty)))) "{Succ {Zero}}")
+  (test (pretty-printing(structV 'Pair 'Left(list (num 1) (structV 'Pair 'Right (list (num 2)))))) "{Left 1 {Right 2}}")
+  (test (pretty-printing(structV 'Booleans 'Set (list (bool #f) (structV 'Booleans 'Empty empty) (bool #t)))) "{Set #f {Empty} #t}") 
+  )
 
 ;tests for extended MiniScheme+ 
 #;(module+ sanity-tests
