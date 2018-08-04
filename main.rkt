@@ -201,13 +201,48 @@
                      #f)]
                 [(x y) (error "Match failure")]))
 
-;; run :: s-expr -> number/boolean/procedura/struct
+;; run :: s-expr -> number/boolean/procedure/struct
 (define(run prog)
-  (let ([result (interp (parse prog) empty-env)])
+  (define prog-with-lists (list 'local '{{datatype List 
+                  {Empty} 
+                  {Cons head tail}}
+                {define length {fun {l} 
+                               {match l
+                                 {case {Empty} => 0}
+                                 {case {Cons head tail} => (+ 1 (length tail))}}}}}
+          prog))
+  
+  (let ([result (interp (parse prog-with-lists) empty-env)])
     (if (Struct? result)
         (pretty-printing result)
         result)))
 
+
+
+#|
+(define(run prog)
+  (let ([result (interp (parse
+                         (list {'local '{{datatype List 
+                  {Empty} 
+                  {Cons head tail}}
+                {define length {fun {l} 
+                               {match l
+                                 {case {Empty} => 0}
+                                 {case {Cons h t} => (+ 1 (length t))}}}}} prog})) empty-env)])
+
+    (if (Struct? result)
+        (pretty-printing result)
+        result)))
+
+(run '{local {{datatype List 
+                  {Empty} 
+                  {Cons head tail}}
+                {define length {fun {l} 
+                               {match l
+                                 {case {Empty} => 0}
+                                 {case {Cons head tail} => (+ 1 (length tail))}}}}}
+          {pred {Succ {Succ {Zero}}}}})
+|#
 
 #|-----------------------------
 Environment abstract data type
@@ -274,3 +309,5 @@ update-env! :: Sym Val Env -> Void
       [(cons h t) (string-append (pretty-printing-2 h) (pretty-printing-2 t))]
       [_ ""]))
   (substring (pretty-printing-2 s) 1))
+
+

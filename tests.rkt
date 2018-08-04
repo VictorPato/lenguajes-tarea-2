@@ -1,6 +1,7 @@
 #lang play
 
 (require "main.rkt")
+(print-only-errors #t)
 ;; Test sub-module.
 ;; See http://blog.racket-lang.org/2012/06/submodules.html
 
@@ -72,6 +73,12 @@
   (test (pretty-printing(structV 'Nat 'Succ (list (structV 'Nat 'Zero empty)))) "{Succ {Zero}}")
   (test (pretty-printing(structV 'Pair 'Left(list (num 1) (structV 'Pair 'Right (list (num 2)))))) "{Left 1 {Right 2}}")
   (test (pretty-printing(structV 'Booleans 'Set (list (bool #f) (structV 'Booleans 'Empty empty) (bool #t)))) "{Set #f {Empty} #t}") 
+  ;; lists and length
+  (test (run '{List? {Empty}}) #t)
+  (test (run '{List? {Cons 1 {Empty}}}) #t)
+  (test (run '{Cons? {Cons 1 2}}) #t)
+  (test (run '{length {Empty}}) 0)
+  (test (run '{length {Cons 1{ Cons 2{Empty}}}}) 2)
   )
 
 ;tests for extended MiniScheme+ 
