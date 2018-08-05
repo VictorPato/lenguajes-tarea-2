@@ -67,7 +67,12 @@
 
 ;; parse :: s-expr -> Expr
 (define(parse s-expr)
+  (define (list-parser l)
+    (match l
+      [(list head values ...) (app (id 'Cons) (list (parse head) (list-parser values)))]
+      [empty (app (id 'Empty) (list))]))
   (match s-expr
+    [(list 'list values ...) (list-parser values)]
     [(? number?) (num s-expr)]
     [(? boolean?) (bool s-expr)]
     [(? string?) (str s-expr)]
@@ -83,7 +88,8 @@
     [(list f args ...) ; same here
      (if (assq f *primitives*)
          (prim-app f (map parse args)) ; args is a list
-         (app (parse f) (map parse args)))]))
+         (app (parse f) (map parse args)))])
+  )
 
 ; parse-def :: s-expr -> Def
 (define(parse-def s-expr)  
@@ -102,13 +108,19 @@
     [(list 'case pattern => body) (cse (parse-pattern pattern) (parse body))]))
 
 ; parse-pattern :: sexpr -> Pattern
-(define(parse-pattern p)  
+(define(parse-pattern p)
+  (define (list-parser l)
+    (match l
+      [(list head values ...) (constrP 'Cons (list (parse-pattern head) (list-parser values)))]
+      [empty (constrP  'Empty (list))]))
   (match p
+    [(list 'list values ...) (list-parser values)]
     [(? symbol?)  (idP p)]
     [(? number?)  (litP (num p))]
     [(? boolean?) (litP (bool p))]
     [(? string?)  (litP (str p))]
-    [(list ctr patterns ...) (constrP (first p) (map parse-pattern patterns))]))
+    [(list ctr patterns ...) (constrP (first p) (map parse-pattern patterns))])
+  )
 
 ;; interp :: Expr Env -> number/boolean/procedure/Struct
 (define(interp expr env)
@@ -204,45 +216,19 @@
 ;; run :: s-expr -> number/boolean/procedure/struct
 (define(run prog)
   (define prog-with-lists (list 'local '{{datatype List 
-                  {Empty} 
-                  {Cons head tail}}
-                {define length {fun {l} 
-                               {match l
-                                 {case {Empty} => 0}
-                                 {case {Cons head tail} => (+ 1 (length tail))}}}}}
-          prog))
+                                                   {Empty} 
+                                                   {Cons head tail}}
+                                         {define length {fun {l} 
+                                                             {match l
+                                                               {case {Empty} => 0}
+                                                               {case {Cons head tail} => (+ 1 (length tail))}}}}}
+                                prog))
   
   (let ([result (interp (parse prog-with-lists) empty-env)])
     (if (Struct? result)
         (pretty-printing result)
         result)))
 
-
-
-#|
-(define(run prog)
-  (let ([result (interp (parse
-                         (list {'local '{{datatype List 
-                  {Empty} 
-                  {Cons head tail}}
-                {define length {fun {l} 
-                               {match l
-                                 {case {Empty} => 0}
-                                 {case {Cons h t} => (+ 1 (length t))}}}}} prog})) empty-env)])
-
-    (if (Struct? result)
-        (pretty-printing result)
-        result)))
-
-(run '{local {{datatype List 
-                  {Empty} 
-                  {Cons head tail}}
-                {define length {fun {l} 
-                               {match l
-                                 {case {Empty} => 0}
-                                 {case {Cons head tail} => (+ 1 (length tail))}}}}}
-          {pred {Succ {Succ {Zero}}}}})
-|#
 
 #|-----------------------------
 Environment abstract data type
@@ -302,9 +288,14 @@ update-env! :: Sym Val Env -> Void
 ; retorna una estructura en forma de string legible
 (define (pretty-printing s)
   (define (pretty-printing-2 s)
+    (define (print-list l)
+      (match l
+        [(list x (structV 'List _ vals)) (string-append (pretty-printing-2 x) (print-list vals))]
+        [empty ""]))
     (match s
-      [(bool b) (string-append " " (format "~a" b))]
-      [(num n) (string-append " " (number->string n))]
+      [(? boolean?) (string-append " " (format "~a" s))]
+      [(? number?) (string-append " " (number->string s))]
+      [(structV 'List _ vals) (string-append " (list" (print-list vals) ")")]
       [(structV name variant values) (string-append " {"(symbol->string variant) (pretty-printing-2 values)"}")]
       [(cons h t) (string-append (pretty-printing-2 h) (pretty-printing-2 t))]
       [_ ""]))

@@ -74,17 +74,25 @@
 (module+ test
   ;; pretty-printing
   (test (pretty-printing(structV 'Nat 'Succ (list (structV 'Nat 'Zero empty)))) "{Succ {Zero}}")
-  (test (pretty-printing(structV 'Pair 'Left(list (num 1) (structV 'Pair 'Right (list (num 2)))))) "{Left 1 {Right 2}}")
-  (test (pretty-printing(structV 'Booleans 'Set (list (bool #f) (structV 'Booleans 'Empty empty) (bool #t)))) "{Set #f {Empty} #t}")
+  (test (pretty-printing(structV 'Pair 'Left(list  1 (structV 'Pair 'Right (list 2))))) "{Left 1 {Right 2}}")
+  (test (pretty-printing(structV 'Booleans 'Set (list #f (structV 'Booleans 'Empty empty) #t))) "{Set #f {Empty} #t}")
   ;; lists and length
   (test (run '{List? {Empty}}) #t)
   (test (run '{List? {Cons 1 {Empty}}}) #t)
   (test (run '{Cons? {Cons 1 2}}) #t)
   (test (run '{length {Empty}}) 0)
   (test (run '{length {Cons 1{ Cons 2{Empty}}}}) 2)
-
+  ;; sintactic sugar (?) for lists
+  (test (run '{match {list {+ 1 1} 4 6}
+          {case {Cons h r} => h}
+          {case _ => 0}}) 2)
+  (test (run '{length {list 1 2 3}}) 3)
+  ;; pattern matching lists
+  (test (run '{match {list 2 {list 4 5} 6}
+          {case {list a {list b c} d} => c}}) 5)
+  ;; pretty printing lists
+  (test (run '{list 1 4 6}) "(list 1 4 6)")
   )
-
 ;tests for extended MiniScheme+ 
 #;(module+ sanity-tests
     (test (run '{local {{datatype Nat 
