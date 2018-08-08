@@ -65,7 +65,7 @@
   (litP l) ; valor literal 
   (constrP ctr patterns)) ; constructor y sub-patrones
 
-;; parse :: s-expr -> Expr
+;; parse :: s-expr -> Expr    <---- editada para azucar sintactico de listas
 (define(parse s-expr)
   ; list-parser :: sexpr -> Pattern
   ; aplica el parser recursivamente dentro de listas
@@ -148,19 +148,19 @@
     [(app fun-expr arg-expr-list)
      (match (strict(interp fun-expr env))
        [(closureV fun-ids body cl-env)(body                                  
-                                   (map (λ (id y)
-                                          (match id
-                                            [(list 'lazy x) (exprV y env (box #f))]
-                                            [ _ (strict(interp y env))])) fun-ids arg-expr-list)
-                                   (map (λ (id)
-                                          (match id
-                                            [(list 'lazy x) x]
-                                            [_ id])) fun-ids))]
+                                       (map (λ (id y)
+                                              (match id
+                                                [(list 'lazy x) (exprV y env (box #f))]
+                                                [ _ (strict (interp y env))])) fun-ids arg-expr-list)
+                                       (map (λ (id)
+                                              (match id
+                                                [(list 'lazy x) x]
+                                                [_ id])) fun-ids))]
        [_ (def (id i) fun-expr)
           ((interp fun-expr env)
            (match (env-lookup i env)
-             [(list 'lazy x) (exprV arg-expr-list env (box #f))]
-             [ _ (map (lambda(x) (interp x env)) arg-expr-list) ]))])]
+             [(list 'lazy someId) (exprV arg-expr-list env (box #f))]
+             [ _ (map (lambda (x) (interp x env)) arg-expr-list) ]))])]
     
     ; primitive application
     [(prim-app prim arg-expr-list)
@@ -195,13 +195,13 @@
                env))
 
 ; interp-variant :: String String Env -> Void
-(define(interp-variant name var env)  
+(define(interp-variant name var env)
+  ;; define parametros
+  (def par (variant-params var))
   ;; name of the variant or dataconstructor
-  (def varname (variant-name var))  
+  (def varname (variant-name var))
   ;; variant data constructor, eg. Zero, Succ
-  (update-env! varname
-               (λ (args) (structV name varname args))
-               env)
+  (update-env! varname (closureV par (λ (a id) (structV name varname a)) env) env)
   ;; variant predicate, eg. Zero?, Succ?
   (update-env! (string->symbol (string-append (symbol->string varname) "?"))
                (λ (v) (symbol=? (structV-variant (first v)) varname))
@@ -307,7 +307,10 @@ update-env! :: Sym Val Env -> Void
 ;; pretty-printing :: Struct -> string
 ;; convierte una estructura a un string legible y comprensible
 (define (pretty-printing s)
+  ;; pretty-printing-2 es funcion auxiliar, la unica diferencia es que a pretty-printing se le quita el primer caracter al final
   (define (pretty-printing-2 s)
+    ;; print-list :: Struct -> string
+    ;; permite imprimir las listas de forma bonita utilizando recursion
     (define (print-list l)
       (match l
         [(list x (structV 'List _ vals)) (string-append (pretty-printing-2 x) (print-list vals))]
@@ -322,7 +325,7 @@ update-env! :: Sym Val Env -> Void
   (substring (pretty-printing-2 s) 1))
 
 
-;--------- Código para lazyness estraido de clase 04/26 
+;--------- Código para lazyness estraido de clase 04/26:i
 
 (deftype Val
   (numV n)
@@ -341,3 +344,16 @@ update-env! :: Sym Val Env -> Void
              val))
          )]
     [ _ v]))
+
+
+;---------------- primera parte streams
+;; stream-data es una estructura definida para minischeme+
+(def stream-data '{datatype Stream {stream head {lazy tail}}})
+
+;; make-stream :: Val Stream -> Stream
+;; construye un stream utilizando la estructura antes definida
+(def make-stream '{define make-stream  {fun {val  {lazy strm}} {stream val strm}}})
+
+#|
+Hasta acá llega mi tarea. Se completó lo de listas y lo de lazyness. No se hizo el trabajo con streams
+|#

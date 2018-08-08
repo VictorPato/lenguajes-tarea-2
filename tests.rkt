@@ -99,7 +99,17 @@
 (module+ test
   (test (run '{{fun {x  {lazy y}} x} 1 {/ 1 0}}) 1)
   (test (run '{{fun {x  {lazy y}} x} 1 {/ 1 z}}) 1)
+  (test (run '{{fun {x  {lazy y}} {match x
+                                    {case 0 => 0}
+                                    {case 1 => 10}}} 1 u}) 10)
+  (test/exn (run '{{fun {x   y} {match x
+                                  {case 0 => 0}
+                                  {case 1 => 10}}} 1 u}) "no binding for identifier: u")
   (test/exn (run '{{fun {x y} x} 1 z}) "no binding for identifier: z") 
+  (test(run '{local {{datatype T 
+                               {C {lazy a}}}
+                     {define x {C {/ 1 z}}}}
+               {T? x}}) #t)
 
   )
 ;tests for extended MiniScheme+ 
