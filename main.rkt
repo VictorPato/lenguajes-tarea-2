@@ -67,6 +67,8 @@
 
 ;; parse :: s-expr -> Expr
 (define(parse s-expr)
+  ; list-parser :: sexpr -> Pattern
+  ; aplica el parser recursivamente dentro de listas
   (define (list-parser l)
     (match l
       [(list head values ...) (app (id 'Cons) (list (parse head) (list-parser values)))]
@@ -108,6 +110,8 @@
 
 ; parse-pattern :: sexpr -> Pattern      <---- editada para azucar sintactico de listas
 (define(parse-pattern p)
+  ; list-parser :: sexpr -> Pattern
+  ; aplica el parser recursivamente dentro de listas. Modificada para parse-pattern
   (define (list-parser l)
     (match l
       [(list head values ...) (constrP 'Cons (list (parse-pattern head) (list-parser values)))]
@@ -122,6 +126,7 @@
   )
 
 ;; interp :: Expr Env -> number/boolean/procedure/Struct
+;; Interprete de MiniScheme+
 (define(interp expr env)
   (match expr
     ; literals
@@ -139,14 +144,14 @@
     [(fun ids body)
      (closureV ids (λ (arg-vals id)
                      (interp body (extend-env id arg-vals env))) env)]
-    ; application                       <---- editada para lazyness
+    ; application                       <---------- editada para lazyness
     [(app fun-expr arg-expr-list)
      (match (strict(interp fun-expr env))
-       [(closureV fun-ids body cl-env)(body
-                                   (map (λ (id a)
+       [(closureV fun-ids body cl-env)(body                                  
+                                   (map (λ (id y)
                                           (match id
-                                            [(list 'lazy x) (exprV a env (box #f))]
-                                            [ _ (strict(interp a env))])) fun-ids arg-expr-list)
+                                            [(list 'lazy x) (exprV y env (box #f))]
+                                            [ _ (strict(interp y env))])) fun-ids arg-expr-list)
                                    (map (λ (id)
                                           (match id
                                             [(list 'lazy x) x]
@@ -226,11 +231,14 @@
                      #f)]
                 [(x y) (error "Match failure")]))
 
-;; run :: s-expr -> number/boolean/procedure/Strings    <---- editada para listas y pretty printing
+;; run :: s-expr -> number/boolean/procedure/Strings 
+;; corre una s-expr entregando resultado. Aplica pretty-printing e incluye listas en minischeme+
 (define(run prog)
   (define prog-with-lists (list 'local '{{datatype List 
                                                    {Empty} 
                                                    {Cons head tail}}
+                                         ; length List -> num
+                                         ; entrega el largo de una lista de minischeme+
                                          {define length {fun {l} 
                                                              {match l
                                                                {case {Empty} => 0}
@@ -297,7 +305,7 @@ update-env! :: Sym Val Env -> Void
 ;;--------------------------------
 
 ;; pretty-printing :: Struct -> string
-;; retorna una estructura en forma de string legible
+;; convierte una estructura a un string legible y comprensible
 (define (pretty-printing s)
   (define (pretty-printing-2 s)
     (define (print-list l)
@@ -314,7 +322,7 @@ update-env! :: Sym Val Env -> Void
   (substring (pretty-printing-2 s) 1))
 
 
-;--------- Código para lazy estraido de clase 04/26 
+;--------- Código para lazyness estraido de clase 04/26 
 
 (deftype Val
   (numV n)
