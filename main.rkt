@@ -88,8 +88,7 @@
     [(list f args ...) ; same here
      (if (assq f *primitives*)
          (prim-app f (map parse args)) ; args is a list
-         (app (parse f) (map parse args)))])
-  )
+         (app (parse f) (map parse args)))]))
 
 ; parse-def :: s-expr -> Def
 (define(parse-def s-expr)  
@@ -107,7 +106,7 @@
   (match c
     [(list 'case pattern => body) (cse (parse-pattern pattern) (parse body))]))
 
-; parse-pattern :: sexpr -> Pattern
+; parse-pattern :: sexpr -> Pattern      <---- editada para azucar sintactico de listas
 (define(parse-pattern p)
   (define (list-parser l)
     (match l
@@ -138,12 +137,26 @@
     [(id x) (env-lookup x env)]
     ; function (notice the meta interpretation)
     [(fun ids body)
-     (λ (arg-vals)
-       (interp body (extend-env ids arg-vals env)))]
-    ; application
+     (closureV ids (λ (arg-vals id)
+                     (interp body (extend-env id arg-vals env))) env)]
+    ; application                       <---- editada para lazyness
     [(app fun-expr arg-expr-list)
-     ((interp fun-expr env)
-      (map (λ (a) (interp a env)) arg-expr-list))]
+     (match (strict(interp fun-expr env))
+       [(closureV fun-ids body cl-env)(body
+                                   (map (λ (id a)
+                                          (match id
+                                            [(list 'lazy x) (exprV a env (box #f))]
+                                            [ _ (strict(interp a env))])) fun-ids arg-expr-list)
+                                   (map (λ (id)
+                                          (match id
+                                            [(list 'lazy x) x]
+                                            [_ id])) fun-ids))]
+       [_ (def (id i) fun-expr)
+          ((interp fun-expr env)
+           (match (env-lookup i env)
+             [(list 'lazy x) (exprV arg-expr-list env (box #f))]
+             [ _ (map (lambda(x) (interp x env)) arg-expr-list) ]))])]
+    
     ; primitive application
     [(prim-app prim arg-expr-list)
      (apply (cadr (assq prim *primitives*))
@@ -213,7 +226,7 @@
                      #f)]
                 [(x y) (error "Match failure")]))
 
-;; run :: s-expr -> number/boolean/procedure/struct
+;; run :: s-expr -> number/boolean/procedure/Strings    <---- editada para listas y pretty printing
 (define(run prog)
   (define prog-with-lists (list 'local '{{datatype List 
                                                    {Empty} 
@@ -223,7 +236,6 @@
                                                                {case {Empty} => 0}
                                                                {case {Cons head tail} => (+ 1 (length tail))}}}}}
                                 prog))
-  
   (let ([result (interp (parse prog-with-lists) empty-env)])
     (if (Struct? result)
         (pretty-printing result)
@@ -284,8 +296,8 @@ update-env! :: Sym Val Env -> Void
 
 ;;--------------------------------
 
-; pretty-printing :: Struct -> string
-; retorna una estructura en forma de string legible
+;; pretty-printing :: Struct -> string
+;; retorna una estructura en forma de string legible
 (define (pretty-printing s)
   (define (pretty-printing-2 s)
     (define (print-list l)
@@ -302,3 +314,22 @@ update-env! :: Sym Val Env -> Void
   (substring (pretty-printing-2 s) 1))
 
 
+;--------- Código para lazy estraido de clase 04/26 
+
+(deftype Val
+  (numV n)
+  (closureV fun body env)
+  (exprV expr env cache))
+
+;; strict :: Val -> Val (only numV or closureV)
+(define (strict v)
+  (match v
+    [(exprV expr env cache)
+     (if (unbox cache)
+         (unbox cache)
+         (begin
+           (let ([val (strict (interp expr env))])
+             (set-box! cache val)
+             val))
+         )]
+    [ _ v]))

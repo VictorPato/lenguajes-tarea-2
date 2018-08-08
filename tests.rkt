@@ -70,7 +70,7 @@
                                           {case {Succ m} => m}}}}}
                 {Succ? {pred {Succ {Succ {Zero}}}}}}) #t)
   )
-
+; tests listas
 (module+ test
   ;; pretty-printing
   (test (pretty-printing(structV 'Nat 'Succ (list (structV 'Nat 'Zero empty)))) "{Succ {Zero}}")
@@ -82,47 +82,56 @@
   (test (run '{Cons? {Cons 1 2}}) #t)
   (test (run '{length {Empty}}) 0)
   (test (run '{length {Cons 1{ Cons 2{Empty}}}}) 2)
-  ;; sintactic sugar (?) for lists
+  ;; sintactic sugar for lists
   (test (run '{match {list {+ 1 1} 4 6}
-          {case {Cons h r} => h}
-          {case _ => 0}}) 2)
+                {case {Cons h r} => h}
+                {case _ => 0}}) 2)
   (test (run '{length {list 1 2 3}}) 3)
   ;; pattern matching lists
   (test (run '{match {list 2 {list 4 5} 6}
-          {case {list a {list b c} d} => c}}) 5)
+                {case {list a {list b c} d} => c}}) 5)
   ;; pretty printing lists
   (test (run '{list 1 4 6}) "(list 1 4 6)")
+  
+  )
+
+; tests lazyness
+(module+ test
+  (test (run '{{fun {x  {lazy y}} x} 1 {/ 1 0}}) 1)
+  (test (run '{{fun {x  {lazy y}} x} 1 {/ 1 z}}) 1)
+  (test/exn (run '{{fun {x y} x} 1 z}) "no binding for identifier: z") 
+
   )
 ;tests for extended MiniScheme+ 
 #;(module+ sanity-tests
     (test (run '{local {{datatype Nat 
-                  {Zero} 
-                  {Succ n}}
-                {define pred {fun {n} 
-                               {match n
-                                 {case {Zero} => {Zero}}
-                                 {case {Succ m} => m}}}}}
-          {pred {Succ {Succ {Zero}}}}}) "{Succ {Zero}}")
+                                  {Zero} 
+                                  {Succ n}}
+                        {define pred {fun {n} 
+                                          {match n
+                                            {case {Zero} => {Zero}}
+                                            {case {Succ m} => m}}}}}
+                  {pred {Succ {Succ {Zero}}}}}) "{Succ {Zero}}")
   
-(test (run
- `{local ,stream-lib
-          {local {,ones ,stream-take}
-            {stream-take 11 ones}}}) "{list 1 1 1 1 1 1 1 1 1 1 1}")
+    (test (run
+           `{local ,stream-lib
+              {local {,ones ,stream-take}
+                {stream-take 11 ones}}}) "{list 1 1 1 1 1 1 1 1 1 1 1}")
 
-(test (run `{local ,stream-lib
-          {local {,stream-zipWith ,fibs}
-            {stream-take 10 fibs}}}) "{list 1 1 2 3 5 8 13 21 34 55}")
+    (test (run `{local ,stream-lib
+                  {local {,stream-zipWith ,fibs}
+                    {stream-take 10 fibs}}}) "{list 1 1 2 3 5 8 13 21 34 55}")
 
-(test (run `{local ,stream-lib
-          {local {,ones ,stream-zipWith}
-            {stream-take 10
-                         {stream-zipWith
-                          {fun {n m}
-                               {+ n m}}
-                          ones
-                          ones}}}})  "{list 2 2 2 2 2 2 2 2 2 2}")
-(test 
-(run `{local ,stream-lib
-               {local {,stream-take ,merge-sort ,fibs ,stream-zipWith}
-                 {stream-take 10 {merge-sort fibs fibs}}}})   "{list 1 1 1 1 2 2 3 3 5 5}"))
+    (test (run `{local ,stream-lib
+                  {local {,ones ,stream-zipWith}
+                    {stream-take 10
+                                 {stream-zipWith
+                                  {fun {n m}
+                                       {+ n m}}
+                                  ones
+                                  ones}}}})  "{list 2 2 2 2 2 2 2 2 2 2}")
+    (test 
+     (run `{local ,stream-lib
+             {local {,stream-take ,merge-sort ,fibs ,stream-zipWith}
+               {stream-take 10 {merge-sort fibs fibs}}}})   "{list 1 1 1 1 2 2 3 3 5 5}"))
 
